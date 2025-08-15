@@ -1,3 +1,5 @@
+'use client';
+
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
@@ -105,17 +107,17 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) 
   };
 
   const variantClasses = {
-    default: 'bg-background border',
-    success: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
-    error: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
-    warning: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800',
-    info: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
+    default: 'bg-white border border-gray-200',
+    success: 'bg-green-50 border-green-200',
+    error: 'bg-red-50 border-red-200',
+    warning: 'bg-yellow-50 border-yellow-200',
+    info: 'bg-blue-50 border-blue-200',
   };
 
   return (
     <div
       className={cn(
-        'pointer-events-auto flex w-full max-w-md rounded-lg shadow-lg ring-1 ring-black ring-opacity-5',
+        'pointer-events-auto flex w-full max-w-md rounded-lg shadow-lg',
         'animate-in slide-in-from-right duration-300',
         variantClasses[toast.variant || 'default']
       )}
@@ -128,13 +130,13 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) 
         )}
         <div className={cn('ml-3 flex-1', !icons[toast.variant || 'default'] && 'ml-0')}>
           {toast.title && (
-            <p className="text-sm font-medium text-foreground">
+            <p className="text-sm font-medium text-gray-900">
               {toast.title}
             </p>
           )}
           {toast.description && (
             <p className={cn(
-              'text-sm text-muted-foreground',
+              'text-sm text-gray-500',
               toast.title && 'mt-1'
             )}>
               {toast.description}
@@ -149,14 +151,14 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) 
               toast.action?.onClick();
               onRemove();
             }}
-            className="flex-shrink-0 rounded-md px-3 py-2 text-sm font-medium text-primary hover:text-primary/80 focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex-shrink-0 rounded-md px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-500"
           >
             {toast.action.label}
           </button>
         )}
         <button
           onClick={onRemove}
-          className="ml-2 inline-flex rounded-md p-2 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary"
+          className="ml-2 inline-flex rounded-md p-2 text-gray-400 hover:text-gray-500"
         >
           <span className="sr-only">Close</span>
           <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -175,7 +177,13 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) 
 // Container Component
 function ToastContainer() {
   const context = useContext(ToastContext);
-  if (!context || context.toasts.length === 0) return null;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !context || context.toasts.length === 0) return null;
 
   return createPortal(
     <div className="pointer-events-none fixed inset-0 z-50 flex flex-col items-end justify-end p-4 sm:p-6">
@@ -188,90 +196,6 @@ function ToastContainer() {
           />
         ))}
       </div>
-    </div>,
-    document.body
-  );
-}
-
-// Utility functions for common toast types
-export const toast = {
-  success: (title: string, description?: string, options?: Partial<Toast>) => {
-    const context = useContext(ToastContext);
-    return context?.addToast({ ...options, title, description, variant: 'success' });
-  },
-  error: (title: string, description?: string, options?: Partial<Toast>) => {
-    const context = useContext(ToastContext);
-    return context?.addToast({ ...options, title, description, variant: 'error' });
-  },
-  warning: (title: string, description?: string, options?: Partial<Toast>) => {
-    const context = useContext(ToastContext);
-    return context?.addToast({ ...options, title, description, variant: 'warning' });
-  },
-  info: (title: string, description?: string, options?: Partial<Toast>) => {
-    const context = useContext(ToastContext);
-    return context?.addToast({ ...options, title, description, variant: 'info' });
-  },
-};
-
-// Notification component (standalone, no provider needed)
-interface NotificationProps {
-  show: boolean;
-  onClose: () => void;
-  title?: string;
-  description?: string;
-  variant?: 'default' | 'success' | 'error' | 'warning' | 'info';
-  position?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
-  duration?: number;
-}
-
-export function Notification({
-  show,
-  onClose,
-  title,
-  description,
-  variant = 'default',
-  position = 'bottom-right',
-  duration = 5000,
-}: NotificationProps) {
-  useEffect(() => {
-    if (show && duration > 0) {
-      const timer = setTimeout(onClose, duration);
-      return () => clearTimeout(timer);
-    }
-  }, [show, duration, onClose]);
-
-  if (!show) return null;
-
-  const positionClasses = {
-    'top-left': 'top-4 left-4',
-    'top-center': 'top-4 left-1/2 -translate-x-1/2',
-    'top-right': 'top-4 right-4',
-    'bottom-left': 'bottom-4 left-4',
-    'bottom-center': 'bottom-4 left-1/2 -translate-x-1/2',
-    'bottom-right': 'bottom-4 right-4',
-  };
-
-  const animationClasses = {
-    'top-left': 'slide-in-from-left',
-    'top-center': 'slide-in-from-top',
-    'top-right': 'slide-in-from-right',
-    'bottom-left': 'slide-in-from-left',
-    'bottom-center': 'slide-in-from-bottom',
-    'bottom-right': 'slide-in-from-right',
-  };
-
-  return createPortal(
-    <div
-      className={cn(
-        'fixed z-50 w-full max-w-sm',
-        positionClasses[position],
-        `animate-in ${animationClasses[position]} duration-300`
-      )}
-    >
-      <ToastItem
-        toast={{ id: 'notification', title, description, variant, duration: 0 }}
-        onRemove={onClose}
-      />
     </div>,
     document.body
   );

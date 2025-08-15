@@ -12,34 +12,34 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'AppName - Build Something Amazing',
-  description: 'Building the future of web applications with cutting-edge technology and beautiful design.',
-  keywords: 'web app, saas, nextjs, react, typescript',
-  authors: [{ name: 'Your Name' }],
-  creator: 'Your Company',
-  publisher: 'Your Company',
+  title: 'RifAzteca - Gana Increíbles Premios',
+  description: 'La plataforma de rifas más confiable de México. Participa y gana autos, dinero en efectivo y mucho más.',
+  keywords: 'rifas, premios, México, sorteos, autos, dinero',
+  authors: [{ name: 'RifAzteca' }],
+  creator: 'RifAzteca',
+  publisher: 'RifAzteca',
   openGraph: {
     type: 'website',
-    locale: 'en_US',
-    url: 'https://yourapp.com',
-    title: 'AppName - Build Something Amazing',
-    description: 'Building the future of web applications with cutting-edge technology and beautiful design.',
-    siteName: 'AppName',
+    locale: 'es_MX',
+    url: 'https://rifazteca.com',
+    title: 'RifAzteca - Gana Increíbles Premios',
+    description: 'La plataforma de rifas más confiable de México. Participa y gana autos, dinero en efectivo y mucho más.',
+    siteName: 'RifAzteca',
     images: [
       {
-        url: 'https://yourapp.com/og-image.jpg',
+        url: '/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'AppName',
+        alt: 'RifAzteca - Rifas en México',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'AppName - Build Something Amazing',
-    description: 'Building the future of web applications with cutting-edge technology and beautiful design.',
-    images: ['https://yourapp.com/twitter-image.jpg'],
-    creator: '@yourusername',
+    title: 'RifAzteca - Gana Increíbles Premios',
+    description: 'La plataforma de rifas más confiable de México.',
+    images: ['/twitter-image.jpg'],
+    creator: '@rifazteca',
   },
   icons: {
     icon: '/favicon.ico',
@@ -58,10 +58,6 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  verification: {
-    google: 'your-google-verification-code',
-    yandex: 'your-yandex-verification-code',
-  },
 };
 
 export default function RootLayout({
@@ -70,7 +66,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning>
       <body className={cn(
         inter.variable,
         'font-sans antialiased'
