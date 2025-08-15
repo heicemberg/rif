@@ -1,434 +1,334 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useCartStore } from '../stores/cart-store';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Copy, Upload, CreditCard, Banknote, Building2, Store, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useCartStore } from '@/stores/cart-store';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { PAYMENT_METHODS } from '@/lib/constants';
+import { formatCurrency } from '@/lib/utils';
 
 interface PaymentMethodsProps {
-  total: number;
-  onContinuar: () => void;
-  onVolver: () => void;
+  className?: string;
+  onSelect?: (methodId: string) => void;
+  selectedMethod?: string;
+  showDetails?: boolean;
+  showFees?: boolean;
+  variant?: 'grid' | 'list' | 'compact';
 }
 
-interface PaymentData {
-  metodo: 'BINANCE' | 'BANCOPPEL' | 'AZTECA' | 'OXXO';
-  referencia?: string;
-  comprobante?: File;
-  comprobanteUrl?: string;
-}
+export function PaymentMethods({
+  className,
+  onSelect,
+  selectedMethod: propSelectedMethod,
+  showDetails = true,
+  showFees = true,
+  variant = 'grid',
+}: PaymentMethodsProps) {
+  const { datosPago, setDatosPago } = useCartStore();
+  const [selectedMethod, setSelectedMethod] = useState(
+    propSelectedMethod || datosPago?.metodo || ''
+  );
+  const [expandedMethod, setExpandedMethod] = useState<string | null>(null);
 
-const PAYMENT_INFO = {
-  BINANCE: {
-    title: 'Binance Pay / USDT',
-    icon: '₿',
-    color: 'from-yellow-500 to-orange-500',
-    datos: {
-      email: 'rifas@silverado2024.com',
-      id: 'ID: 123456789',
-      wallet: 'USDT (TRC20): TQn9Y2khEsLMWCoupe...',
-      qr: '/images/binance-qr.png'
-    },
-    instrucciones: [
-      'Envía el monto exacto en USDT a la wallet proporcionada',
-      'Usa la red TRC20 para menores comisiones',
-      'Guarda el hash de la transacción',
-      'Sube captura de pantalla del pago realizado'
-    ]
-  },
-  BANCOPPEL: {
-    title: 'Banco Coppel',
-    icon: '🏪',
-    color: 'from-blue-500 to-cyan-500',
-    datos: {
-      banco: 'Banco Coppel',
-      titular: 'RIFAS SILVERADO 2024 S.A. DE C.V.',
-      cuenta: '1234567890123456',
-      clabe: '137180123456789012'
-    },
-    instrucciones: [
-      'Realiza transferencia SPEI o depósito en ventanilla',
-      'Usa la CLABE para transferencias desde otros bancos',
-      'Anota tu número de referencia del depósito',
-      'Sube foto del comprobante de pago'
-    ]
-  },
-  AZTECA: {
-    title: 'Banco Azteca',
-    icon: '🏦',
-    color: 'from-green-500 to-emerald-500',
-    datos: {
-      banco: 'Banco Azteca',
-      titular: 'RIFAS SILVERADO 2024 S.A. DE C.V.',
-      cuenta: '9876543210987654',
-      clabe: '127180987654321098'
-    },
-    instrucciones: [
-      'Realiza depósito en cualquier sucursal Banco Azteca',
-      'También puedes usar Elektra para el depósito',
-      'Guarda tu número de referencia',
-      'Toma foto clara del ticket de depósito'
-    ]
-  },
-  OXXO: {
-    title: 'Depósito OXXO',
-    icon: '🏪',
-    color: 'from-red-500 to-pink-500',
-    datos: {
-      tienda: 'OXXO',
-      referencia: 'Será generada al confirmar',
-      comision: '$12 MXN por depósito',
-      limite: 'Máximo $10,000 MXN por depósito'
-    },
-    instrucciones: [
-      'Ve a cualquier tienda OXXO',
-      'Presenta la referencia generada',
-      'Paga el monto exacto más $12 MXN de comisión',
-      'Guarda tu ticket de pago como comprobante'
-    ]
-  }
-};
-
-export default function PaymentMethods({ total, onContinuar, onVolver }: PaymentMethodsProps) {
-  const [metodoSeleccionado, setMetodoSeleccionado] = useState<PaymentData['metodo'] | null>(null);
-  const [referencia, setReferencia] = useState('');
-  const [comprobante, setComprobante] = useState<File | null>(null);
-  const [copiado, setCopiado] = useState<string | null>(null);
-  
-  const { setDatosPago } = useCartStore();
-
-  const copiarTexto = async (texto: string, tipo: string) => {
-    try {
-      await navigator.clipboard.writeText(texto);
-      setCopiado(tipo);
-      setTimeout(() => setCopiado(null), 2000);
-    } catch (err) {
-      console.error('Error al copiar:', err);
+  const handleSelect = (methodId: string) => {
+    setSelectedMethod(methodId);
+    setDatosPago({
+      metodo: methodId as any,
+    });
+    if (onSelect) {
+      onSelect(methodId);
     }
   };
 
-  const manejarArchivoComprobante = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const archivo = e.target.files?.[0];
-    if (archivo) {
-      if (archivo.size > 5 * 1024 * 1024) { // 5MB
-        alert('El archivo es muy grande. Máximo 5MB.');
-        return;
-      }
-      if (!archivo.type.startsWith('image/')) {
-        alert('Solo se permiten imágenes.');
-        return;
-      }
-      setComprobante(archivo);
-    }
+  const toggleExpanded = (methodId: string) => {
+    setExpandedMethod(expandedMethod === methodId ? null : methodId);
   };
 
-  const generarReferenciaOXXO = () => {
-    return `RIF${Date.now().toString().slice(-8)}`;
-  };
-
-  const handleContinuar = () => {
-    if (!metodoSeleccionado) {
-      alert('Por favor selecciona un método de pago');
-      return;
-    }
-
-    let referenciaFinal = referencia;
-    if (metodoSeleccionado === 'OXXO' && !referencia) {
-      referenciaFinal = generarReferenciaOXXO();
-      setReferencia(referenciaFinal);
-    }
-
-    const datosPago: PaymentData = {
-      metodo: metodoSeleccionado,
-      referencia: referenciaFinal,
-      comprobante,
-      comprobanteUrl: comprobante ? URL.createObjectURL(comprobante) : undefined
-    };
-
-    setDatosPago(datosPago);
-    onContinuar();
-  };
-
-  const convertirUSDtoMXN = (usd: number) => {
-    const tipoCambio = 17.5; // Tipo de cambio aproximado
-    return usd * tipoCambio;
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-3xl font-bold text-white mb-2">
-          Selecciona tu Método de Pago
-        </h2>
-        <p className="text-gray-300">
-          Total a pagar: <span className="text-yellow-400 font-bold text-xl">${total.toFixed(2)} USD</span>
-          <span className="text-gray-400 ml-2">
-            (≈ ${convertirUSDtoMXN(total).toLocaleString()} MXN)
-          </span>
-        </p>
-      </div>
-
-      {/* Métodos de Pago Disponibles */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {Object.entries(PAYMENT_INFO).map(([key, info]) => (
-          <Card
-            key={key}
-            className={`cursor-pointer transition-all duration-300 border-2 ${
-              metodoSeleccionado === key
-                ? 'border-yellow-500 bg-yellow-500/10'
-                : 'border-white/20 bg-white/5 hover:border-white/40'
-            }`}
-            onClick={() => setMetodoSeleccionado(key as PaymentData['metodo'])}
+  // Renderizar método compacto
+  if (variant === 'compact') {
+    return (
+      <div className={cn('flex flex-wrap gap-2', className)}>
+        {PAYMENT_METHODS.map((method) => (
+          <Button
+            key={method.id}
+            variant={selectedMethod === method.id ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => handleSelect(method.id)}
+            className="flex items-center gap-2"
           >
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className={`w-16 h-16 rounded-full bg-gradient-to-r ${info.color} flex items-center justify-center text-2xl`}>
-                  {info.icon}
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-white">{info.title}</h3>
-                  <p className="text-gray-400 text-sm">
-                    {key === 'BINANCE' && 'Criptomonedas - Instantáneo'}
-                    {key === 'BANCOPPEL' && 'Transferencia bancaria'}
-                    {key === 'AZTECA' && 'Depósito en sucursal'}
-                    {key === 'OXXO' && 'Pago en efectivo'}
-                  </p>
-                </div>
-                {metodoSeleccionado === key && (
-                  <Badge className="bg-yellow-500 text-black">Seleccionado</Badge>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+            <span className="text-lg">{method.id === 'BINANCE' ? '₿' : '💳'}</span>
+            <span>{method.name}</span>
+            {method.recommended && (
+              <Badge variant="success" size="sm">
+                ⭐
+              </Badge>
+            )}
+          </Button>
         ))}
       </div>
+    );
+  }
 
-      {/* Detalles del Método Seleccionado */}
-      {metodoSeleccionado && (
-        <Card className="bg-white/5 border-white/20">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center space-x-2">
-              <span className="text-2xl">{PAYMENT_INFO[metodoSeleccionado].icon}</span>
-              <span>Datos para {PAYMENT_INFO[metodoSeleccionado].title}</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Datos de Pago */}
-            <div className="bg-black/20 rounded-lg p-4 space-y-3">
-              <h4 className="text-lg font-semibold text-yellow-400 mb-3">Información de Pago</h4>
-              
-              {metodoSeleccionado === 'BINANCE' && (
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-300">Email Binance:</span>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-white font-mono">{PAYMENT_INFO.BINANCE.datos.email}</span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => copiarTexto(PAYMENT_INFO.BINANCE.datos.email, 'email')}
-                      >
-                        <Copy size={14} />
-                        {copiado === 'email' ? '¡Copiado!' : 'Copiar'}
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-300">ID Binance:</span>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-white font-mono">{PAYMENT_INFO.BINANCE.datos.id}</span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => copiarTexto(PAYMENT_INFO.BINANCE.datos.id, 'id')}
-                      >
-                        <Copy size={14} />
-                        {copiado === 'id' ? '¡Copiado!' : 'Copiar'}
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-300">Wallet USDT:</span>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-white font-mono text-xs">{PAYMENT_INFO.BINANCE.datos.wallet}</span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => copiarTexto(PAYMENT_INFO.BINANCE.datos.wallet, 'wallet')}
-                      >
-                        <Copy size={14} />
-                        {copiado === 'wallet' ? '¡Copiado!' : 'Copiar'}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+  // Renderizar lista
+  if (variant === 'list') {
+    return (
+      <div className={cn('space-y-3', className)}>
+        {PAYMENT_METHODS.map((method) => {
+          const isSelected = selectedMethod === method.id;
+          const isExpanded = expandedMethod === method.id;
+
+          return (
+            <Card
+              key={method.id}
+              className={cn(
+                'p-4 cursor-pointer transition-all',
+                isSelected && 'border-primary bg-primary/5',
+                'hover:shadow-md'
               )}
-
-              {(metodoSeleccionado === 'BANCOPPEL' || metodoSeleccionado === 'AZTECA') && (
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-300">Banco:</span>
-                    <span className="text-white font-semibold">{PAYMENT_INFO[metodoSeleccionado].datos.banco}</span>
+              onClick={() => handleSelect(method.id)}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-3 flex-1">
+                  <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <img
+                      src={method.logo}
+                      alt={method.name}
+                      className="w-8 h-8 object-contain"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '';
+                        target.style.display = 'none';
+                        if (target.parentElement) {
+                          target.parentElement.innerHTML = method.id === 'BINANCE' ? '₿' : '💳';
+                        }
+                      }}
+                    />
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-300">Titular:</span>
-                    <span className="text-white font-mono text-sm">{PAYMENT_INFO[metodoSeleccionado].datos.titular}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-300">Cuenta:</span>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-white font-mono">{PAYMENT_INFO[metodoSeleccionado].datos.cuenta}</span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => copiarTexto(PAYMENT_INFO[metodoSeleccionado].datos.cuenta, 'cuenta')}
-                      >
-                        <Copy size={14} />
-                        {copiado === 'cuenta' ? '¡Copiado!' : 'Copiar'}
-                      </Button>
+                  
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-semibold">{method.name}</h4>
+                      {method.recommended && (
+                        <Badge variant="success" size="sm">
+                          Recomendado
+                        </Badge>
+                      )}
+                      {isSelected && (
+                        <Badge variant="default" size="sm">
+                          Seleccionado
+                        </Badge>
+                      )}
                     </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-300">CLABE:</span>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-white font-mono">{PAYMENT_INFO[metodoSeleccionado].datos.clabe}</span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => copiarTexto(PAYMENT_INFO[metodoSeleccionado].datos.clabe, 'clabe')}
-                      >
-                        <Copy size={14} />
-                        {copiado === 'clabe' ? '¡Copiado!' : 'Copiar'}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {metodoSeleccionado === 'OXXO' && (
-                <div className="space-y-3">
-                  <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-4">
-                    <div className="flex items-center space-x-2 text-yellow-400 mb-2">
-                      <AlertTriangle size={20} />
-                      <span className="font-semibold">Importante</span>
-                    </div>
-                    <p className="text-gray-300 text-sm">
-                      La referencia se generará automáticamente al confirmar tu pedido. 
-                      Tendrás 24 horas para realizar el pago.
+                    
+                    <p className="text-sm text-muted-foreground">
+                      {method.description}
                     </p>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-300">Comisión OXXO:</span>
-                    <span className="text-yellow-400 font-semibold">$12 MXN</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-300">Total a pagar:</span>
-                    <span className="text-white font-bold">
-                      ${(convertirUSDtoMXN(total) + 12).toLocaleString()} MXN
-                    </span>
+                    
+                    {showFees && (
+                      <div className="flex items-center gap-4 mt-2 text-xs">
+                        <span className="text-green-600">
+                          ⚡ {method.processingTime}
+                        </span>
+                        <span className={cn(
+                          method.fee === 0 ? 'text-green-600' : 'text-orange-600'
+                        )}>
+                          {method.fee === 0 ? '✓ Sin comisión' : `Comisión: $${method.fee}`}
+                        </span>
+                      </div>
+                    )}
+
+                    {showDetails && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleExpanded(method.id);
+                        }}
+                        className="text-xs text-primary hover:underline mt-2"
+                      >
+                        {isExpanded ? 'Ver menos' : 'Ver detalles'}
+                      </button>
+                    )}
                   </div>
                 </div>
-              )}
-            </div>
 
-            {/* Instrucciones */}
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-              <h4 className="text-lg font-semibold text-blue-400 mb-3">Instrucciones de Pago</h4>
-              <ol className="space-y-2 text-gray-300">
-                {PAYMENT_INFO[metodoSeleccionado].instrucciones.map((instruccion, index) => (
-                  <li key={index} className="flex items-start space-x-2">
-                    <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">
-                      {index + 1}
-                    </span>
-                    <span className="text-sm">{instruccion}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-
-            {/* Formulario de Comprobante */}
-            <div className="space-y-4">
-              <h4 className="text-lg font-semibold text-white">Información del Pago</h4>
-              
-              {metodoSeleccionado !== 'OXXO' && (
-                <div>
-                  <Label htmlFor="referencia" className="text-gray-300">
-                    Número de Referencia / Hash de Transacción *
-                  </Label>
-                  <Input
-                    id="referencia"
-                    value={referencia}
-                    onChange={(e) => setReferencia(e.target.value)}
-                    placeholder={
-                      metodoSeleccionado === 'BINANCE' 
-                        ? 'Hash de la transacción blockchain'
-                        : 'Número de referencia del depósito'
-                    }
-                    className="mt-1"
-                    required
-                  />
-                </div>
-              )}
-
-              <div>
-                <Label htmlFor="comprobante" className="text-gray-300">
-                  Comprobante de Pago *
-                </Label>
-                <div className="mt-1">
-                  <input
-                    type="file"
-                    id="comprobante"
-                    accept="image/*"
-                    onChange={manejarArchivoComprobante}
-                    className="hidden"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => document.getElementById('comprobante')?.click()}
-                    className="w-full flex items-center justify-center space-x-2"
-                  >
-                    <Upload size={18} />
-                    <span>
-                      {comprobante ? comprobante.name : 'Subir comprobante (imagen, máx 5MB)'}
-                    </span>
-                  </Button>
-                </div>
-                {comprobante && (
-                  <div className="mt-2 text-green-400 text-sm">
-                    ✓ Archivo seleccionado: {comprobante.name}
+                {isSelected && (
+                  <div className="text-primary">
+                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
                   </div>
                 )}
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
-      {/* Botones de Navegación */}
-      <div className="flex justify-between pt-6">
-        <Button variant="outline" onClick={onVolver} className="flex items-center space-x-2">
-          <ArrowLeft size={18} />
-          <span>Volver</span>
-        </Button>
-
-        <Button
-          onClick={handleContinuar}
-          disabled={
-            !metodoSeleccionado || 
-            (metodoSeleccionado !== 'OXXO' && !referencia) ||
-            !comprobante
-          }
-          className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-bold px-8 py-3"
-        >
-          Continuar al Resumen
-        </Button>
+              {isExpanded && showDetails && (
+                <div className="mt-4 pt-4 border-t space-y-3">
+                  {method.accountInfo && (
+                    <div className="space-y-2 text-sm">
+                      <h5 className="font-medium">Datos para el pago:</h5>
+                      {method.id === 'BINANCE' && (
+                        <>
+                          <p>Usuario: <span className="font-mono">{method.accountInfo.userName}</span></p>
+                          <p>Red: <span className="font-mono">{method.accountInfo.network}</span></p>
+                          <p>Moneda: <span className="font-mono">{method.accountInfo.currency}</span></p>
+                        </>
+                      )}
+                      {(method.id === 'AZTECA' || method.id === 'BANCOPPEL') && (
+                        <>
+                          <p>Cuenta: <span className="font-mono">{method.accountInfo.accountNumber}</span></p>
+                          <p>CLABE: <span className="font-mono">{method.accountInfo.clabe}</span></p>
+                          <p>Titular: {method.accountInfo.accountName}</p>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  
+                  <div className="space-y-2">
+                    <h5 className="font-medium text-sm">Instrucciones:</h5>
+                    <ol className="space-y-1 text-sm text-muted-foreground">
+                      {method.instructions.map((instruction, idx) => (
+                        <li key={idx} className="flex gap-2">
+                          <span className="text-primary">{idx + 1}.</span>
+                          <span>{instruction}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                </div>
+              )}
+            </Card>
+          );
+        })}
       </div>
+    );
+  }
+
+  // Renderizar grid (default)
+  return (
+    <div className={cn('grid md:grid-cols-2 gap-4', className)}>
+      {PAYMENT_METHODS.map((method) => {
+        const isSelected = selectedMethod === method.id;
+        
+        return (
+          <Card
+            key={method.id}
+            className={cn(
+              'relative p-4 cursor-pointer transition-all',
+              isSelected && 'border-primary bg-primary/5 shadow-lg',
+              !isSelected && 'hover:border-gray-300 hover:shadow-md'
+            )}
+            onClick={() => handleSelect(method.id)}
+          >
+            {method.recommended && (
+              <Badge 
+                variant="success" 
+                className="absolute -top-2 -right-2"
+              >
+                ⭐ Recomendado
+              </Badge>
+            )}
+
+            <div className="flex items-start gap-3">
+              <div className="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                <img
+                  src={method.logo}
+                  alt={method.name}
+                  className="w-10 h-10 object-contain"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = '';
+                    target.style.display = 'none';
+                    if (target.parentElement) {
+                      target.parentElement.innerHTML = method.id === 'BINANCE' ? '₿' : '💳';
+                      target.parentElement.classList.add('text-2xl');
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="flex-1">
+                <h4 className="font-semibold text-lg mb-1">{method.name}</h4>
+                <p className="text-sm text-muted-foreground mb-3">
+                  {method.description}
+                </p>
+
+                {showFees && (
+                  <div className="flex flex-wrap items-center gap-3 text-xs">
+                    <div className="flex items-center gap-1">
+                      <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      <span>{method.processingTime}</span>
+                    </div>
+                    
+                    {method.fee === 0 ? (
+                      <div className="flex items-center gap-1">
+                        <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-green-600">Sin comisión</span>
+                      </div>
+                    ) : (
+                      <span className="text-orange-600">
+                        +${method.fee} comisión
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {isSelected && (
+                <div className="absolute top-3 right-3 text-primary">
+                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              )}
+            </div>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+// Componente para mostrar método seleccionado
+export function SelectedPaymentMethod({ 
+  methodId,
+  className 
+}: { 
+  methodId: string;
+  className?: string;
+}) {
+  const method = PAYMENT_METHODS.find(m => m.id === methodId);
+  
+  if (!method) return null;
+
+  return (
+    <div className={cn('flex items-center gap-3 p-3 bg-muted rounded-lg', className)}>
+      <div className="w-10 h-10 rounded bg-white flex items-center justify-center">
+        <img
+          src={method.logo}
+          alt={method.name}
+          className="w-8 h-8 object-contain"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = '';
+            target.style.display = 'none';
+            if (target.parentElement) {
+              target.parentElement.innerHTML = method.id === 'BINANCE' ? '₿' : '💳';
+            }
+          }}
+        />
+      </div>
+      <div className="flex-1">
+        <p className="font-medium">{method.name}</p>
+        <p className="text-xs text-muted-foreground">{method.description}</p>
+      </div>
+      <Badge variant="default" size="sm">
+        Seleccionado
+      </Badge>
     </div>
   );
 }
